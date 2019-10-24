@@ -2,7 +2,7 @@
 //  QUICKLEARNTests.swift
 //  QUICKLEARNTests
 //
-//  Created by  yangfuke on 2019/10/24.
+//  Created by  wangquangang on 2019/10/24.
 //  Copyright © 2019 wangquangang. All rights reserved.
 //
 

@@ -1,0 +1,6 @@
+module Pods_QUICKLEARN {
+  umbrella header "Pods-QUICKLEARN-umbrella.h"
+
+  export *
+  module * { export * }
+}
