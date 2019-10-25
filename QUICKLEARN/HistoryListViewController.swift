@@ -6,4 +6,11 @@
 //  Copyright © 2019 wangquangang. All rights reserved.
 //
 
-import Foundation
+import UIKit
+
+class HistoryListViewController: UIViewController {
+
+
+    
+}
+

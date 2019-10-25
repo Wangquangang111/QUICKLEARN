@@ -12,41 +12,78 @@ import AVFoundation
 import ObjectMapper
 
 class ViewController: UIViewController {
-    let textView = UITextView()
+    @IBOutlet weak var listBtn: UIBarButtonItem!
+    @IBOutlet weak var photoView: UIImageView!
+    @IBOutlet weak var shutterBtn: UIButton!
+    @IBOutlet weak var photoTextView: UITextView!
+    @IBOutlet weak var translateBtn: UIButton!
+    @IBOutlet weak var translateTextView: UITextView!
+    @IBOutlet weak var speechBtn: UIButton!
     let syntesizer = AVSpeechSynthesizer()
     var utterance = AVSpeechUtterance()
-    let btn = UIButton()
     var language = "en"
-    var imageText = ""
-    var newText = ""
+    var dataDic = [String: Any]()
+    let saveDataKey = "languageData"
 
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
-        btn.setTitle("add", for: .normal)
-        btn.frame = CGRect(x: 100, y: 100, width: 100, height: 100)
-        btn.backgroundColor = UIColor.red
-        btn.addTarget(self, action: #selector(runs), for: .touchUpInside)
-        view.addSubview(btn)
+
+        if let data = UserDefaults.standard.dictionary(forKey: saveDataKey) {
+            dataDic = data
+        }
+
+        shutterBtn.clipsToBounds = true
+        shutterBtn.layer.cornerRadius = 5
+        shutterBtn.layer.borderWidth = 1
+        shutterBtn.layer.borderColor = UIColor.gray.cgColor
+
+        translateBtn.clipsToBounds = true
+        translateBtn.layer.cornerRadius = 5
+        translateBtn.layer.borderWidth = 1
+        translateBtn.layer.borderColor = UIColor.gray.cgColor
+
+        speechBtn.clipsToBounds = true
+        speechBtn.layer.cornerRadius = 5
+        speechBtn.layer.borderWidth = 1
+        speechBtn.layer.borderColor = UIColor.gray.cgColor
+
+        photoTextView.clipsToBounds = true
+        photoTextView.layer.cornerRadius = 5
+        photoTextView.layer.borderWidth = 1
+        photoTextView.layer.borderColor = UIColor.gray.cgColor
+        photoTextView.isEditable = false
+
+        translateTextView.clipsToBounds = true
+        translateTextView.layer.cornerRadius = 5
+        translateTextView.layer.borderWidth = 1
+        translateTextView.layer.borderColor = UIColor.gray.cgColor
+        translateTextView.isEditable = false
+
     }
 
-    @objc func runs() {
-        let string = "我的天啊我的不是健康的山东黄金大客户达科技"
+    @IBAction func historyAction(_ sender: UIBarButtonItem) {
+
+
+    }
+
+    @IBAction func shutterAction(_ sender: Any) {
+        showCamera()
+    }
+
+    @IBAction func translateAction(_ sender: Any) {
+        if let text = photoTextView.text, text.count > 0 {
+            self.requestNewText(language: language, text: text)
+        }
+    }
+
+    @IBAction func speechAction(_ sender: Any) {
+        let string = translateTextView.text ?? ""
         utterance = AVSpeechUtterance(string: string)
         utterance.voice = AVSpeechSynthesisVoice.init(language: "zh-CN")
         utterance.rate = 0.1
         syntesizer.speak(utterance)
-//        self.requestNewText(language: language, text: imageText)
-
     }
-
-    @IBAction func play(_ sender: UIButton) {
-        let string = textView.text ?? ""
-        utterance = AVSpeechUtterance(string: string)
-        utterance.rate = 0.1
-        syntesizer.speak(utterance)
-    }
-
 }
 
 extension ViewController {
@@ -130,11 +167,55 @@ extension ViewController {
         let dataTask = session.dataTask(with: request, completionHandler: { (data, response, error) in
             if error == nil, let responseString = String(data: data!, encoding: String.Encoding.utf8), let model = Mapper<Model>().map(JSONString: responseString) {
                 completion(model)
+                print(responseString)
             } else {
                 print("request failed: \(String(describing: error))")
             }
         })
         dataTask.resume()
+    }
+
+    func requestNewText(language: String, text: String) {
+        let headers = [
+            "Ocp-Apim-Subscription-Key": "f2c2cfaca25b4bca97edfce0a3610d82",
+            "Content-Type": "application/json",
+            "cache-control": "no-cache",
+        ]
+
+        let postData = "[{'text': '\(text)'}]".data(using: String.Encoding.utf8)!
+
+        let request = NSMutableURLRequest(url: URL(string: "https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&from=\(language)&to=zh-Hans")! as URL,
+                                          cachePolicy: .useProtocolCachePolicy,
+                                          timeoutInterval: 10.0)
+        request.httpMethod = "POST"
+        request.allHTTPHeaderFields = headers
+        request.httpBody = postData
+
+        let session = URLSession.shared
+        let dataTask = session.dataTask(with: request as URLRequest, completionHandler: { [weak self] (data, response, error) -> Void in
+            guard let self = self else { return }
+            if let data = data, let text = self.getTranslateText(data: data) {
+                DispatchQueue.main.async {
+                    self.translateTextView.text = text
+                    if let str = self.photoTextView.text, str.count > 0 {
+                        self.dataDic[str] = text
+                        self.saveData()
+                    }
+                }
+            } else {
+                print("request failed")
+            }
+        })
+        dataTask.resume()
+    }
+
+    func dataToJSON(data: Data) -> AnyObject? {
+        do {
+            return try JSONSerialization.jsonObject(with: data, options: .mutableContainers) as AnyObject
+        } catch {
+            print(error)
+        }
+        return nil
     }
 
     func getImageText(model: Model) -> String {
@@ -161,31 +242,17 @@ extension ViewController {
         return imageText
     }
 
-    func requestNewText(language: String, text: String) {
-        let headers = [
-            "Ocp-Apim-Subscription-Key": "f2c2cfaca25b4bca97edfce0a3610d82",
-            "Content-Type": "application/json",
-            "cache-control": "no-cache",
-        ]
+    func getTranslateText(data: Data) -> String? {
+        if let d =  try? JSONSerialization.jsonObject(with: data, options: .mutableContainers) as? Array<Any>,
+            let s = d.first as? [String: Any], let arr = s["translations"] as? [[String: Any]] {
+            return arr.first?["text"] as? String
+        }
+        return nil
+    }
 
-        let postData = "[{'text': '\(text)'}]".data(using: String.Encoding.utf8)!
-
-        let request = NSMutableURLRequest(url: URL(string: "https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&from=\(language)&to=zh-Hans")! as URL,
-                                          cachePolicy: .useProtocolCachePolicy,
-                                          timeoutInterval: 10.0)
-        request.httpMethod = "POST"
-        request.allHTTPHeaderFields = headers
-        request.httpBody = postData
-
-        let session = URLSession.shared
-        let dataTask = session.dataTask(with: request as URLRequest, completionHandler: { (data, response, error) -> Void in
-            if error == nil, let responseString = String(data: data!, encoding: String.Encoding.utf8) {
-                print(responseString)
-            } else {
-                print("request failed: ", terminator: "")
-            }
-        })
-        dataTask.resume()
+    func saveData() {
+        UserDefaults.standard.set(dataDic, forKey: saveDataKey)
+        UserDefaults.standard.synchronize()
     }
 }
 
@@ -197,11 +264,15 @@ extension ViewController: UIImagePickerControllerDelegate, UINavigationControlle
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
         guard let img = info[.originalImage] as? UIImage else { return }
         picker.dismiss(animated: true, completion: nil)
+        DispatchQueue.main.async {
+            self.photoView.image = img
+        }
         requestImage(image: img) { [weak self] (model) in
             if let self = self {
-                self.imageText = self.getImageText(model: model)
-                self.requestNewText(language: model.language ?? "en", text: self.imageText)
-                print("imageText: \(self.imageText)")
+                DispatchQueue.main.async {
+                    self.photoTextView.text = self.getImageText(model: model)
+                }
+                print("photoTextView: \(self.photoTextView.text ?? "")")
             }
         }
     }

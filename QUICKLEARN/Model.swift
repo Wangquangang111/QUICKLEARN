@@ -60,3 +60,26 @@ class Word: NSObject, Mappable{
         text <- map["text"]
     }
 }
+
+class TranslationModel : NSObject, Mappable{
+    var translations: [Translation]?
+
+    required init?(map: Map){}
+
+    func mapping(map: Map){
+        translations <- map["translations"]
+    }
+}
+
+class Translation: NSObject, Mappable{
+    var text: String?
+    var to: String?
+
+    required init?(map: Map){}
+
+    func mapping(map: Map){
+        text <- map["text"]
+        to <- map["to"]
+    }
+
+}
