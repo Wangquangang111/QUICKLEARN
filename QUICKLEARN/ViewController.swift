@@ -22,15 +22,15 @@ class ViewController: UIViewController {
     let syntesizer = AVSpeechSynthesizer()
     var utterance = AVSpeechUtterance()
     var language = "en"
-    var dataDic = [String: Any]()
+    var dataArr = [[String]]()
     let saveDataKey = "languageData"
 
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
 
-        if let data = UserDefaults.standard.dictionary(forKey: saveDataKey) {
-            dataDic = data
+        if let data = UserDefaults.standard.array(forKey: saveDataKey) as? [[String]] {
+            dataArr = data
         }
 
         shutterBtn.clipsToBounds = true
@@ -198,7 +198,7 @@ extension ViewController {
                 DispatchQueue.main.async {
                     self.translateTextView.text = text
                     if let str = self.photoTextView.text, str.count > 0 {
-                        self.dataDic[str] = text
+                        self.dataArr.insert([str, text], at: 0)
                         self.saveData()
                     }
                 }
@@ -251,7 +251,7 @@ extension ViewController {
     }
 
     func saveData() {
-        UserDefaults.standard.set(dataDic, forKey: saveDataKey)
+        UserDefaults.standard.set(dataArr, forKey: saveDataKey)
         UserDefaults.standard.synchronize()
     }
 }

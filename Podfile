@@ -8,3 +8,7 @@ target 'QUICKLEARN' do
     pod 'ObjectMapper', '~> 3.4'
 
 end
+
+target 'QUICKLEARNTests' do
+    pod 'ObjectMapper', '~> 3.4'
+end
